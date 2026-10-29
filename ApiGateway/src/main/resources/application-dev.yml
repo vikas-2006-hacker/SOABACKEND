@@ -1,0 +1,2 @@
+jwt:
+  secret: ${JWT_SECRET:campuscore-local-development-signing-key-not-for-production}

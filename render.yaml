@@ -1,0 +1,203 @@
+envVarGroups:
+  - name: campuscore-auth
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+  - name: campuscore-faculty-mfa
+    envVars:
+      - key: MFA_ENCRYPTION_KEY
+        generateValue: true
+
+services:
+  - type: pserv
+    name: campuscore-eureka
+    runtime: docker
+    dockerfilePath: ./EurekaServer/Dockerfile
+    dockerContext: ./EurekaServer
+    dockerCommand: java -jar /app/app.jar
+    envVars:
+      - fromGroup: campuscore-auth
+      - key: SERVER_ADDRESS
+        value: 0.0.0.0
+      - key: SERVER_PORT
+        value: "8761"
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: EUREKA_INSTANCE_HOSTNAME
+        fromService:
+          name: campuscore-eureka
+          type: pserv
+          property: host
+
+  - type: pserv
+    name: campuscore-student
+    runtime: docker
+    dockerfilePath: ./Studentinformation/Dockerfile
+    dockerContext: ./Studentinformation
+    dockerCommand: java -jar /app/app.jar
+    envVars:
+      - fromGroup: campuscore-auth
+      - key: SERVER_ADDRESS
+        value: 0.0.0.0
+      - key: SERVER_PORT
+        value: "8082"
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: EUREKA_HOSTPORT
+        fromService:
+          name: campuscore-eureka
+          type: pserv
+          property: hostport
+      - key: EUREKA_INSTANCE_HOSTNAME
+        fromService:
+          name: campuscore-student
+          type: pserv
+          property: host
+      - key: STUDENT_DATABASE_URL
+        sync: false
+      - key: STUDENT_DATABASE_USERNAME
+        sync: false
+      - key: STUDENT_DATABASE_PASSWORD
+        sync: false
+
+  - type: pserv
+    name: campuscore-faculty
+    runtime: docker
+    dockerfilePath: ./FacultyService/Dockerfile
+    dockerContext: ./FacultyService
+    dockerCommand: java -jar /app/app.jar
+    envVars:
+      - fromGroup: campuscore-auth
+      - fromGroup: campuscore-faculty-mfa
+      - key: SERVER_ADDRESS
+        value: 0.0.0.0
+      - key: SERVER_PORT
+        value: "8085"
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: EUREKA_HOSTPORT
+        fromService:
+          name: campuscore-eureka
+          type: pserv
+          property: hostport
+      - key: EUREKA_INSTANCE_HOSTNAME
+        fromService:
+          name: campuscore-faculty
+          type: pserv
+          property: host
+      - key: FACULTY_DATABASE_URL
+        sync: false
+      - key: FACULTY_DATABASE_USERNAME
+        sync: false
+      - key: FACULTY_DATABASE_PASSWORD
+        sync: false
+
+  - type: pserv
+    name: campuscore-attendance
+    runtime: docker
+    dockerfilePath: ./Attendenceservice/Dockerfile
+    dockerContext: ./Attendenceservice
+    dockerCommand: java -jar /app/app.jar
+    envVars:
+      - fromGroup: campuscore-auth
+      - key: SERVER_ADDRESS
+        value: 0.0.0.0
+      - key: SERVER_PORT
+        value: "8083"
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: EUREKA_HOSTPORT
+        fromService:
+          name: campuscore-eureka
+          type: pserv
+          property: hostport
+      - key: EUREKA_INSTANCE_HOSTNAME
+        fromService:
+          name: campuscore-attendance
+          type: pserv
+          property: host
+      - key: ATTENDANCE_DATABASE_URL
+        sync: false
+      - key: ATTENDANCE_DATABASE_USERNAME
+        sync: false
+      - key: ATTENDANCE_DATABASE_PASSWORD
+        sync: false
+
+  - type: pserv
+    name: campuscore-results
+    runtime: docker
+    dockerfilePath: ./Resultservice/Dockerfile
+    dockerContext: ./Resultservice
+    dockerCommand: java -jar /app/app.jar
+    envVars:
+      - fromGroup: campuscore-auth
+      - key: SERVER_ADDRESS
+        value: 0.0.0.0
+      - key: SERVER_PORT
+        value: "8084"
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: EUREKA_HOSTPORT
+        fromService:
+          name: campuscore-eureka
+          type: pserv
+          property: hostport
+      - key: EUREKA_INSTANCE_HOSTNAME
+        fromService:
+          name: campuscore-results
+          type: pserv
+          property: host
+      - key: RESULT_DATABASE_URL
+        sync: false
+      - key: RESULT_DATABASE_USERNAME
+        sync: false
+      - key: RESULT_DATABASE_PASSWORD
+        sync: false
+
+  - type: web
+    name: campuscore-gateway
+    runtime: docker
+    dockerfilePath: ./ApiGateway/Dockerfile
+    dockerContext: ./ApiGateway
+    dockerCommand: java -jar /app/app.jar
+    healthCheckPath: /actuator/health
+    envVars:
+      - fromGroup: campuscore-auth
+      - key: SERVER_ADDRESS
+        value: 0.0.0.0
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: EUREKA_HOSTPORT
+        fromService:
+          name: campuscore-eureka
+          type: pserv
+          property: hostport
+      - key: EUREKA_INSTANCE_HOSTNAME
+        fromService:
+          name: campuscore-gateway
+          type: web
+          property: host
+      - key: FRONTEND_ORIGIN
+        sync: false
+
+  - type: web
+    name: campuscore-frontend
+    runtime: static
+    buildCommand: cd FRONTEND && npm ci && npm run build
+    staticPublishPath: ./FRONTEND/dist
+    envVars:
+      - key: VITE_API_GATEWAY_URL
+        fromService:
+          name: campuscore-gateway
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: VITE_API_BASE_URL
+        value: /api
+      - key: VITE_NOTIFICATIONS_ENABLED
+        value: "true"
+      - key: VITE_EDUPULSE_ASSISTANT_ENABLED
+        value: "true"
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

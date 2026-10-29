@@ -1,0 +1,139 @@
+server:
+  port: ${PORT:${SERVER_PORT:8080}}
+  address: ${SERVER_ADDRESS:0.0.0.0}
+
+spring:
+  application:
+    name: API-GATEWAY
+
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true          # auto-discover services from Eureka
+          lower-case-service-id: true
+
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "${FRONTEND_ORIGIN:http://localhost:5173}"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - Authorization
+              - Content-Type
+            allowCredentials: false
+            maxAge: 3600
+
+      routes:
+        # ── Authentication (Student Service) ─────────────────────────
+        - id: auth-route
+          uri: lb://STUDENT-SERVICE
+          predicates:
+            - Path=/api/auth/**
+
+        # ── Student Information Service ──────────────────────────────
+        - id: student-information-route
+          uri: lb://STUDENT-SERVICE
+          predicates:
+            - Path=/api/students/**
+
+        - id: notification-route
+          uri: lb://STUDENT-SERVICE
+          predicates:
+            - Path=/api/notifications/**
+
+        - id: academic-insights-route
+          uri: lb://STUDENT-SERVICE
+          predicates:
+            - Path=/api/insights/**
+
+        - id: assistant-route
+          uri: lb://STUDENT-SERVICE
+          predicates:
+            - Path=/api/assistant/**
+
+        - id: academic-course-route
+          uri: lb://STUDENT-SERVICE
+          predicates:
+            - Path=/api/courses/**
+
+        - id: enrollment-route
+          uri: lb://STUDENT-SERVICE
+          predicates:
+            - Path=/api/enrollments/**
+
+        # Keep course creation explicit so the admin write endpoint is registered
+        # alongside the public academic catalog routes in the Gateway.
+        - id: admin-course-create-route
+          uri: lb://STUDENT-SERVICE
+          predicates:
+            - Path=/api/admin/courses
+
+        - id: admin-academic-route
+          uri: lb://STUDENT-SERVICE
+          predicates:
+            - Path=/api/admin/**
+
+        # ── Academic faculty routes ──────────────────────────────────
+        - id: faculty-academic-route
+          uri: lb://STUDENT-SERVICE
+          predicates:
+            - Path=/api/faculty/my-courses, /api/faculty/my-students
+
+        # ── Faculty account service ───────────────────────────────────
+        - id: faculty-management-route
+          uri: lb://FACULTY-SERVICE
+          predicates:
+            - Path=/api/faculty/**
+
+        # ── Attendance Service ────────────────────────────────────────
+        - id: attendance-service-route
+          uri: lb://ATTENDANCE-SERVICE
+          predicates:
+            - Path=/api/attendance/**
+
+        # ── Result Service ────────────────────────────────────────────
+        - id: result-service-route
+          uri: lb://RESULT-SERVICE
+          predicates:
+            - Path=/api/results/**
+
+# Eureka configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://${EUREKA_HOSTPORT:localhost:8761}/eureka/}
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: false
+    hostname: ${EUREKA_INSTANCE_HOSTNAME:${RENDER_EXTERNAL_HOSTNAME:localhost}}
+
+# Logging
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    reactor.netty: WARN
+
+# JWT configuration (must match Studentinformation)
+jwt:
+  secret: ${JWT_SECRET:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
