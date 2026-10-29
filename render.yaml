@@ -16,7 +16,6 @@ services:
     dockerContext: ./EurekaServer
     dockerCommand: java -jar /app/app.jar
     envVars:
-      - fromGroup: campuscore-auth
       - key: SERVER_ADDRESS
         value: 0.0.0.0
       - key: SERVER_PORT
@@ -186,13 +185,11 @@ services:
     buildCommand: cd FRONTEND && npm ci && npm run build
     staticPublishPath: ./FRONTEND/dist
     envVars:
-      - key: VITE_API_GATEWAY_URL
+      - key: VITE_API_BASE_URL
         fromService:
           name: campuscore-gateway
           type: web
           envVarKey: RENDER_EXTERNAL_URL
-      - key: VITE_API_BASE_URL
-        value: /api
       - key: VITE_NOTIFICATIONS_ENABLED
         value: "true"
       - key: VITE_EDUPULSE_ASSISTANT_ENABLED

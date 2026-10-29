@@ -2,10 +2,10 @@ import axios from 'axios'
 import { clearStoredAuth, getStoredAuth } from '../utils/storage'
 
 const configuredApiBase = import.meta.env.VITE_API_BASE_URL || '/api'
-const gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL
-const apiBase = import.meta.env.PROD && gatewayUrl?.startsWith('https://') && configuredApiBase.startsWith('/')
-  ? new URL(configuredApiBase, gatewayUrl).toString().replace(/\/$/, '')
-  : configuredApiBase
+const normalizedApiBase = configuredApiBase.replace(/\/$/, '')
+const apiBase = normalizedApiBase.startsWith('/') || normalizedApiBase.endsWith('/api')
+  ? normalizedApiBase
+  : `${normalizedApiBase}/api`
 
 export const api = axios.create({
   baseURL: apiBase,
